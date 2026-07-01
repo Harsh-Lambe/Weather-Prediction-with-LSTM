@@ -1,0 +1,1230 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Upload a trained LSTM model and predict hourly rainfall for any date using weather forecast data.">
+    <title>Hourly Rainfall Prediction | ML Weather Forecasting</title>
+
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+
+    <!-- Material Icons -->
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons+Round" rel="stylesheet">
+
+    <style>
+        /* ================================================================
+           DESIGN SYSTEM
+           ================================================================ */
+        :root {
+            /* Colors */
+            --primary-50: #EEF2FF;
+            --primary-100: #E0E7FF;
+            --primary-200: #C7D2FE;
+            --primary-400: #818CF8;
+            --primary-500: #6366F1;
+            --primary-600: #4F46E5;
+            --primary-700: #4338CA;
+
+            --success-50: #ECFDF5;
+            --success-500: #10B981;
+            --success-600: #059669;
+
+            --warning-50: #FFFBEB;
+            --warning-500: #F59E0B;
+
+            --error-50: #FEF2F2;
+            --error-500: #EF4444;
+            --error-600: #DC2626;
+
+            --gray-50: #F9FAFB;
+            --gray-100: #F3F4F6;
+            --gray-200: #E5E7EB;
+            --gray-300: #D1D5DB;
+            --gray-400: #9CA3AF;
+            --gray-500: #6B7280;
+            --gray-600: #4B5563;
+            --gray-700: #374151;
+            --gray-800: #1F2937;
+            --gray-900: #111827;
+
+            /* Spacing */
+            --space-1: 4px;
+            --space-2: 8px;
+            --space-3: 12px;
+            --space-4: 16px;
+            --space-5: 20px;
+            --space-6: 24px;
+            --space-8: 32px;
+            --space-10: 40px;
+            --space-12: 48px;
+
+            /* Border Radius */
+            --radius-sm: 6px;
+            --radius-md: 10px;
+            --radius-lg: 14px;
+            --radius-xl: 18px;
+            --radius-2xl: 24px;
+
+            /* Shadows */
+            --shadow-sm: 0 1px 2px rgba(0,0,0,0.05);
+            --shadow-md: 0 4px 6px -1px rgba(0,0,0,0.07), 0 2px 4px -2px rgba(0,0,0,0.05);
+            --shadow-lg: 0 10px 15px -3px rgba(0,0,0,0.08), 0 4px 6px -4px rgba(0,0,0,0.05);
+            --shadow-xl: 0 20px 25px -5px rgba(0,0,0,0.08), 0 8px 10px -6px rgba(0,0,0,0.04);
+
+            /* Transitions */
+            --transition-fast: 150ms cubic-bezier(0.4, 0, 0.2, 1);
+            --transition-base: 250ms cubic-bezier(0.4, 0, 0.2, 1);
+            --transition-slow: 400ms cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        /* ================================================================
+           RESET & BASE
+           ================================================================ */
+        *, *::before, *::after {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            background: linear-gradient(135deg, #F0F4FF 0%, #E8ECF8 50%, #F5F0FF 100%);
+            color: var(--gray-800);
+            min-height: 100vh;
+            line-height: 1.6;
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
+        }
+
+        /* Animated background */
+        body::before {
+            content: '';
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background:
+                radial-gradient(ellipse at 20% 50%, rgba(99, 102, 241, 0.08) 0%, transparent 50%),
+                radial-gradient(ellipse at 80% 20%, rgba(139, 92, 246, 0.06) 0%, transparent 50%),
+                radial-gradient(ellipse at 60% 80%, rgba(59, 130, 246, 0.06) 0%, transparent 50%);
+            z-index: 0;
+            pointer-events: none;
+        }
+
+        /* ================================================================
+           LAYOUT
+           ================================================================ */
+        .app-container {
+            position: relative;
+            z-index: 1;
+            max-width: 960px;
+            margin: 0 auto;
+            padding: var(--space-8) var(--space-6);
+        }
+
+        /* ================================================================
+           HEADER
+           ================================================================ */
+        .header {
+            text-align: center;
+            margin-bottom: var(--space-10);
+            animation: fadeInDown 0.6s ease-out;
+        }
+
+        .header-icon {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 64px;
+            height: 64px;
+            background: linear-gradient(135deg, var(--primary-500), var(--primary-700));
+            border-radius: var(--radius-xl);
+            margin-bottom: var(--space-4);
+            box-shadow: 0 8px 24px rgba(99, 102, 241, 0.3);
+        }
+
+        .header-icon .material-icons-round {
+            font-size: 32px;
+            color: white;
+        }
+
+        .header h1 {
+            font-size: 28px;
+            font-weight: 800;
+            color: var(--gray-900);
+            letter-spacing: -0.5px;
+            margin-bottom: var(--space-2);
+        }
+
+        .header p {
+            font-size: 15px;
+            color: var(--gray-500);
+            max-width: 500px;
+            margin: 0 auto;
+        }
+
+        /* ================================================================
+           CARDS
+           ================================================================ */
+        .cards-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: var(--space-6);
+            margin-bottom: var(--space-6);
+            animation: fadeInUp 0.6s ease-out 0.1s both;
+        }
+
+        .card {
+            background: rgba(255, 255, 255, 0.85);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 255, 255, 0.8);
+            border-radius: var(--radius-xl);
+            padding: var(--space-6);
+            box-shadow: var(--shadow-md);
+            transition: box-shadow var(--transition-base), transform var(--transition-base);
+        }
+
+        .card:hover {
+            box-shadow: var(--shadow-lg);
+            transform: translateY(-2px);
+        }
+
+        .card-label {
+            display: flex;
+            align-items: center;
+            gap: var(--space-2);
+            font-size: 13px;
+            font-weight: 600;
+            color: var(--gray-500);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: var(--space-4);
+        }
+
+        .card-label .material-icons-round {
+            font-size: 18px;
+            color: var(--primary-500);
+        }
+
+        /* ================================================================
+           DATE PICKER
+           ================================================================ */
+        .date-input-wrapper {
+            position: relative;
+        }
+
+        .date-input {
+            width: 100%;
+            padding: 14px 16px;
+            padding-left: 44px;
+            font-family: 'Inter', sans-serif;
+            font-size: 15px;
+            font-weight: 500;
+            color: var(--gray-800);
+            background: var(--gray-50);
+            border: 2px solid var(--gray-200);
+            border-radius: var(--radius-md);
+            outline: none;
+            transition: border-color var(--transition-fast), background var(--transition-fast), box-shadow var(--transition-fast);
+            cursor: pointer;
+        }
+
+        .date-input:hover {
+            border-color: var(--gray-300);
+            background: white;
+        }
+
+        .date-input:focus {
+            border-color: var(--primary-500);
+            background: white;
+            box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.15);
+        }
+
+        .date-input-icon {
+            position: absolute;
+            left: 14px;
+            top: 50%;
+            transform: translateY(-50%);
+            font-size: 20px;
+            color: var(--gray-400);
+            pointer-events: none;
+        }
+
+        /* ================================================================
+           FILE UPLOAD
+           ================================================================ */
+        .upload-zone {
+            position: relative;
+            border: 2px dashed var(--gray-300);
+            border-radius: var(--radius-md);
+            padding: var(--space-6) var(--space-4);
+            text-align: center;
+            cursor: pointer;
+            transition: all var(--transition-base);
+            background: var(--gray-50);
+        }
+
+        .upload-zone:hover {
+            border-color: var(--primary-400);
+            background: var(--primary-50);
+        }
+
+        .upload-zone.dragging {
+            border-color: var(--primary-500);
+            background: var(--primary-50);
+            transform: scale(1.01);
+        }
+
+        .upload-zone.uploaded {
+            border-color: var(--success-500);
+            border-style: solid;
+            background: var(--success-50);
+        }
+
+        .upload-zone input[type="file"] {
+            position: absolute;
+            inset: 0;
+            opacity: 0;
+            cursor: pointer;
+        }
+
+        .upload-icon {
+            font-size: 36px;
+            color: var(--gray-400);
+            margin-bottom: var(--space-2);
+            transition: color var(--transition-base);
+        }
+
+        .upload-zone:hover .upload-icon {
+            color: var(--primary-500);
+        }
+
+        .upload-zone.uploaded .upload-icon {
+            color: var(--success-500);
+        }
+
+        .upload-text {
+            font-size: 14px;
+            color: var(--gray-500);
+            margin-bottom: var(--space-1);
+        }
+
+        .upload-text strong {
+            color: var(--primary-600);
+        }
+
+        .upload-hint {
+            font-size: 12px;
+            color: var(--gray-400);
+        }
+
+        .upload-success {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: var(--space-2);
+            margin-top: var(--space-3);
+            font-size: 13px;
+            font-weight: 600;
+            color: var(--success-600);
+            animation: fadeIn 0.3s ease-out;
+        }
+
+        .upload-success .material-icons-round {
+            font-size: 18px;
+        }
+
+        .upload-filename {
+            font-size: 13px;
+            font-weight: 500;
+            color: var(--gray-700);
+            margin-top: var(--space-2);
+            word-break: break-all;
+        }
+
+        .uploading-spinner {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 2.5px solid var(--primary-200);
+            border-top-color: var(--primary-500);
+            border-radius: 50%;
+            animation: spin 0.6s linear infinite;
+        }
+
+        /* ================================================================
+           PREDICT BUTTON
+           ================================================================ */
+        .predict-section {
+            display: flex;
+            justify-content: center;
+            margin-bottom: var(--space-8);
+            animation: fadeInUp 0.6s ease-out 0.2s both;
+        }
+
+        .predict-btn {
+            display: inline-flex;
+            align-items: center;
+            gap: var(--space-3);
+            padding: 16px 40px;
+            font-family: 'Inter', sans-serif;
+            font-size: 16px;
+            font-weight: 700;
+            color: white;
+            background: linear-gradient(135deg, var(--primary-500), var(--primary-700));
+            border: none;
+            border-radius: var(--radius-lg);
+            cursor: pointer;
+            box-shadow: 0 4px 16px rgba(99, 102, 241, 0.35);
+            transition: all var(--transition-base);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .predict-btn::before {
+            content: '';
+            position: absolute;
+            inset: 0;
+            background: linear-gradient(135deg, rgba(255,255,255,0.15) 0%, transparent 50%);
+            opacity: 0;
+            transition: opacity var(--transition-fast);
+        }
+
+        .predict-btn:hover:not(:disabled)::before {
+            opacity: 1;
+        }
+
+        .predict-btn:hover:not(:disabled) {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 24px rgba(99, 102, 241, 0.4);
+        }
+
+        .predict-btn:active:not(:disabled) {
+            transform: translateY(0);
+        }
+
+        .predict-btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            box-shadow: none;
+        }
+
+        .predict-btn .material-icons-round {
+            font-size: 22px;
+        }
+
+        .predict-btn .btn-spinner {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 2.5px solid rgba(255,255,255,0.3);
+            border-top-color: white;
+            border-radius: 50%;
+            animation: spin 0.6s linear infinite;
+        }
+
+        /* ================================================================
+           RESULTS TABLE
+           ================================================================ */
+        .results-section {
+            animation: fadeInUp 0.6s ease-out 0.3s both;
+        }
+
+        .results-card {
+            background: rgba(255, 255, 255, 0.9);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 255, 255, 0.8);
+            border-radius: var(--radius-xl);
+            overflow: hidden;
+            box-shadow: var(--shadow-lg);
+        }
+
+        .results-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: var(--space-5) var(--space-6);
+            background: linear-gradient(135deg, var(--gray-50), white);
+            border-bottom: 1px solid var(--gray-100);
+        }
+
+        .results-title {
+            display: flex;
+            align-items: center;
+            gap: var(--space-2);
+            font-size: 16px;
+            font-weight: 700;
+            color: var(--gray-800);
+        }
+
+        .results-title .material-icons-round {
+            color: var(--primary-500);
+            font-size: 22px;
+        }
+
+        .results-date {
+            font-size: 13px;
+            font-weight: 500;
+            color: var(--gray-500);
+            background: var(--gray-100);
+            padding: 4px 12px;
+            border-radius: var(--radius-sm);
+        }
+
+        .results-table-wrapper {
+            max-height: 600px;
+            overflow-y: auto;
+        }
+
+        .results-table-wrapper::-webkit-scrollbar {
+            width: 6px;
+        }
+
+        .results-table-wrapper::-webkit-scrollbar-track {
+            background: transparent;
+        }
+
+        .results-table-wrapper::-webkit-scrollbar-thumb {
+            background: var(--gray-300);
+            border-radius: 3px;
+        }
+
+        .results-table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        .results-table thead {
+            position: sticky;
+            top: 0;
+            z-index: 2;
+        }
+
+        .results-table th {
+            padding: 12px var(--space-6);
+            font-size: 12px;
+            font-weight: 700;
+            color: var(--gray-500);
+            text-transform: uppercase;
+            letter-spacing: 0.8px;
+            background: var(--gray-50);
+            border-bottom: 2px solid var(--gray-200);
+            text-align: left;
+        }
+
+        .results-table th:last-child {
+            text-align: right;
+        }
+
+        .results-table td {
+            padding: 12px var(--space-6);
+            font-size: 14px;
+            color: var(--gray-700);
+            border-bottom: 1px solid var(--gray-100);
+            transition: background var(--transition-fast);
+        }
+
+        .results-table td:last-child {
+            text-align: right;
+            font-weight: 600;
+            font-variant-numeric: tabular-nums;
+        }
+
+        .results-table tbody tr {
+            transition: background var(--transition-fast);
+        }
+
+        .results-table tbody tr:hover {
+            background: var(--primary-50);
+        }
+
+        .results-table tbody tr:nth-child(even) {
+            background: rgba(249, 250, 251, 0.5);
+        }
+
+        .results-table tbody tr:nth-child(even):hover {
+            background: var(--primary-50);
+        }
+
+        .rainfall-value {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .rainfall-bar {
+            display: inline-block;
+            height: 6px;
+            background: linear-gradient(90deg, var(--primary-400), var(--primary-600));
+            border-radius: 3px;
+            min-width: 2px;
+            max-width: 120px;
+            transition: width var(--transition-slow);
+        }
+
+        .rainfall-bar.high {
+            background: linear-gradient(90deg, var(--warning-500), var(--error-500));
+        }
+
+        .time-cell {
+            display: flex;
+            align-items: center;
+            gap: var(--space-2);
+            font-weight: 500;
+        }
+
+        .time-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: var(--primary-200);
+        }
+
+        .time-dot.active {
+            background: var(--primary-500);
+            box-shadow: 0 0 8px rgba(99, 102, 241, 0.4);
+        }
+
+        /* Summary row */
+        .results-summary {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: var(--space-4) var(--space-6);
+            background: linear-gradient(135deg, var(--primary-50), var(--gray-50));
+            border-top: 2px solid var(--gray-200);
+        }
+
+        .summary-stat {
+            text-align: center;
+        }
+
+        .summary-stat-label {
+            font-size: 11px;
+            font-weight: 600;
+            color: var(--gray-500);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .summary-stat-value {
+            font-size: 20px;
+            font-weight: 800;
+            color: var(--primary-600);
+            font-variant-numeric: tabular-nums;
+        }
+
+        /* ================================================================
+           EMPTY STATE
+           ================================================================ */
+        .empty-state {
+            text-align: center;
+            padding: var(--space-12) var(--space-6);
+            color: var(--gray-400);
+        }
+
+        .empty-state .material-icons-round {
+            font-size: 48px;
+            margin-bottom: var(--space-3);
+            opacity: 0.5;
+        }
+
+        .empty-state p {
+            font-size: 15px;
+        }
+
+        /* ================================================================
+           SNACKBAR / TOAST
+           ================================================================ */
+        .snackbar-container {
+            position: fixed;
+            bottom: var(--space-6);
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 9999;
+            display: flex;
+            flex-direction: column-reverse;
+            gap: var(--space-2);
+            pointer-events: none;
+        }
+
+        .snackbar {
+            display: flex;
+            align-items: center;
+            gap: var(--space-3);
+            padding: 14px 20px;
+            border-radius: var(--radius-md);
+            font-size: 14px;
+            font-weight: 500;
+            box-shadow: var(--shadow-xl);
+            pointer-events: auto;
+            animation: snackIn 0.35s ease-out;
+            backdrop-filter: blur(12px);
+            max-width: 500px;
+        }
+
+        .snackbar.hiding {
+            animation: snackOut 0.25s ease-in forwards;
+        }
+
+        .snackbar.error {
+            background: rgba(254, 242, 242, 0.95);
+            color: var(--error-600);
+            border: 1px solid rgba(239, 68, 68, 0.2);
+        }
+
+        .snackbar.success {
+            background: rgba(236, 253, 245, 0.95);
+            color: var(--success-600);
+            border: 1px solid rgba(16, 185, 129, 0.2);
+        }
+
+        .snackbar.warning {
+            background: rgba(255, 251, 235, 0.95);
+            color: #B45309;
+            border: 1px solid rgba(245, 158, 11, 0.2);
+        }
+
+        .snackbar .material-icons-round {
+            font-size: 20px;
+            flex-shrink: 0;
+        }
+
+        .snackbar-close {
+            background: none;
+            border: none;
+            cursor: pointer;
+            color: inherit;
+            opacity: 0.6;
+            margin-left: var(--space-2);
+            display: flex;
+            padding: 2px;
+            border-radius: 4px;
+            transition: opacity var(--transition-fast);
+        }
+
+        .snackbar-close:hover {
+            opacity: 1;
+        }
+
+        /* ================================================================
+           ANIMATIONS
+           ================================================================ */
+        @keyframes fadeInDown {
+            from { opacity: 0; transform: translateY(-20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        @keyframes fadeInUp {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        @keyframes snackIn {
+            from { opacity: 0; transform: translateY(20px) scale(0.95); }
+            to { opacity: 1; transform: translateY(0) scale(1); }
+        }
+
+        @keyframes snackOut {
+            from { opacity: 1; transform: translateY(0) scale(1); }
+            to { opacity: 0; transform: translateY(20px) scale(0.95); }
+        }
+
+        @keyframes shimmer {
+            0% { background-position: -200% 0; }
+            100% { background-position: 200% 0; }
+        }
+
+        .shimmer-row td {
+            background: linear-gradient(90deg, var(--gray-100) 25%, var(--gray-50) 50%, var(--gray-100) 75%);
+            background-size: 200% 100%;
+            animation: shimmer 1.5s infinite;
+            height: 20px;
+            border-radius: 4px;
+        }
+
+        /* ================================================================
+           RESPONSIVE
+           ================================================================ */
+        @media (max-width: 640px) {
+            .app-container {
+                padding: var(--space-5) var(--space-4);
+            }
+
+            .cards-grid {
+                grid-template-columns: 1fr;
+                gap: var(--space-4);
+            }
+
+            .header h1 {
+                font-size: 22px;
+            }
+
+            .predict-btn {
+                width: 100%;
+                justify-content: center;
+                padding: 14px 24px;
+            }
+
+            .results-summary {
+                flex-wrap: wrap;
+                gap: var(--space-4);
+            }
+
+            .summary-stat {
+                flex: 1;
+                min-width: 80px;
+            }
+        }
+
+        /* ================================================================
+           LOADING OVERLAY FOR TABLE
+           ================================================================ */
+        .table-loading {
+            position: relative;
+        }
+
+        .table-loading::after {
+            content: '';
+            position: absolute;
+            inset: 0;
+            background: rgba(255,255,255,0.7);
+            backdrop-filter: blur(2px);
+            z-index: 1;
+        }
+    </style>
+</head>
+<body>
+    <div class="app-container">
+        <!-- ============================================================
+             HEADER
+             ============================================================ -->
+        <header class="header">
+            <div class="header-icon">
+                <span class="material-icons-round">water_drop</span>
+            </div>
+            <h1>Hourly Rainfall Prediction</h1>
+            <p>Upload your trained model, select a date, and get 24-hour rainfall forecasts powered by weather data.</p>
+        </header>
+
+        <!-- ============================================================
+             INPUT CARDS
+             ============================================================ -->
+        <div class="cards-grid">
+            <!-- Date Picker Card -->
+            <div class="card" id="date-card">
+                <div class="card-label">
+                    <span class="material-icons-round">calendar_today</span>
+                    Select Date
+                </div>
+                <div class="date-input-wrapper">
+                    <span class="material-icons-round date-input-icon">event</span>
+                    <input
+                        type="date"
+                        id="date-input"
+                        class="date-input"
+                        aria-label="Select prediction date"
+                    />
+                </div>
+            </div>
+
+            <!-- Model Upload Card -->
+            <div class="card" id="upload-card">
+                <div class="card-label">
+                    <span class="material-icons-round">cloud_upload</span>
+                    Upload Model Package (.zip)
+                </div>
+                <div class="upload-zone" id="upload-zone">
+                    <input
+                        type="file"
+                        id="file-input"
+                        accept=".zip"
+                        aria-label="Upload model package ZIP file"
+                    />
+                    <div id="upload-content">
+                        <span class="material-icons-round upload-icon" id="upload-icon">folder_zip</span>
+                        <div class="upload-text">
+                            <strong>Click to upload</strong> or drag & drop
+                        </div>
+                        <div class="upload-hint">ZIP containing model.h5, scaler.pkl, config.json</div>
+                    </div>
+                    <div id="upload-status" style="display:none;"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ============================================================
+             PREDICT BUTTON
+             ============================================================ -->
+        <div class="predict-section">
+            <button
+                class="predict-btn"
+                id="predict-btn"
+                disabled
+                aria-label="Predict rainfall"
+            >
+                <span class="material-icons-round" id="predict-icon">water_drop</span>
+                <span id="predict-text">Predict Rainfall</span>
+            </button>
+        </div>
+
+        <!-- ============================================================
+             RESULTS TABLE
+             ============================================================ -->
+        <div class="results-section" id="results-section" style="display:none;">
+            <div class="results-card">
+                <div class="results-header">
+                    <div class="results-title">
+                        <span class="material-icons-round">analytics</span>
+                        Prediction Results
+                    </div>
+                    <span class="results-date" id="results-date"></span>
+                </div>
+
+                <div class="results-table-wrapper">
+                    <table class="results-table" id="results-table">
+                        <thead>
+                            <tr>
+                                <th>Time</th>
+                                <th>Predicted Rainfall (mm)</th>
+                            </tr>
+                        </thead>
+                        <tbody id="results-body">
+                        </tbody>
+                    </table>
+                </div>
+
+                <div class="results-summary" id="results-summary">
+                    <!-- Filled dynamically -->
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ============================================================
+         SNACKBAR CONTAINER
+         ============================================================ -->
+    <div class="snackbar-container" id="snackbar-container"></div>
+
+    <!-- ============================================================
+         JAVASCRIPT
+         ============================================================ -->
+    <script>
+        (() => {
+            'use strict';
+
+            // ---------------------------------------------------------------
+            // Configuration
+            // ---------------------------------------------------------------
+            const API_BASE = 'http://localhost:8000';
+
+            // ---------------------------------------------------------------
+            // DOM References
+            // ---------------------------------------------------------------
+            const dateInput       = document.getElementById('date-input');
+            const fileInput       = document.getElementById('file-input');
+            const uploadZone      = document.getElementById('upload-zone');
+            const uploadContent   = document.getElementById('upload-content');
+            const uploadStatus    = document.getElementById('upload-status');
+            const uploadIcon      = document.getElementById('upload-icon');
+            const predictBtn      = document.getElementById('predict-btn');
+            const predictIcon     = document.getElementById('predict-icon');
+            const predictText     = document.getElementById('predict-text');
+            const resultsSection  = document.getElementById('results-section');
+            const resultsDate     = document.getElementById('results-date');
+            const resultsBody     = document.getElementById('results-body');
+            const resultsSummary  = document.getElementById('results-summary');
+            const snackbarContainer = document.getElementById('snackbar-container');
+
+            // ---------------------------------------------------------------
+            // State
+            // ---------------------------------------------------------------
+            let modelUploaded = false;
+            let isUploading   = false;
+            let isPredicting  = false;
+            let uploadedFilename = '';
+
+            // ---------------------------------------------------------------
+            // Initialise date to today
+            // ---------------------------------------------------------------
+            const today = new Date();
+            dateInput.value = today.toISOString().split('T')[0];
+
+            // ---------------------------------------------------------------
+            // Snackbar System
+            // ---------------------------------------------------------------
+            function showSnackbar(message, type = 'error', duration = 5000) {
+                const icons = {
+                    error: 'error',
+                    success: 'check_circle',
+                    warning: 'warning',
+                };
+
+                const el = document.createElement('div');
+                el.className = `snackbar ${type}`;
+                el.innerHTML = `
+                    <span class="material-icons-round">${icons[type] || 'info'}</span>
+                    <span>${message}</span>
+                    <button class="snackbar-close" aria-label="Close notification">
+                        <span class="material-icons-round" style="font-size:16px">close</span>
+                    </button>
+                `;
+
+                const closeBtn = el.querySelector('.snackbar-close');
+                closeBtn.addEventListener('click', () => dismissSnackbar(el));
+
+                snackbarContainer.appendChild(el);
+
+                if (duration > 0) {
+                    setTimeout(() => dismissSnackbar(el), duration);
+                }
+            }
+
+            function dismissSnackbar(el) {
+                if (!el.parentNode) return;
+                el.classList.add('hiding');
+                setTimeout(() => el.remove(), 250);
+            }
+
+            // ---------------------------------------------------------------
+            // Update Predict Button State
+            // ---------------------------------------------------------------
+            function updatePredictBtn() {
+                predictBtn.disabled = !modelUploaded || !dateInput.value || isPredicting || isUploading;
+            }
+
+            dateInput.addEventListener('change', updatePredictBtn);
+
+            // ---------------------------------------------------------------
+            // Drag & Drop
+            // ---------------------------------------------------------------
+            uploadZone.addEventListener('dragover', (e) => {
+                e.preventDefault();
+                uploadZone.classList.add('dragging');
+            });
+
+            uploadZone.addEventListener('dragleave', () => {
+                uploadZone.classList.remove('dragging');
+            });
+
+            uploadZone.addEventListener('drop', (e) => {
+                e.preventDefault();
+                uploadZone.classList.remove('dragging');
+                if (e.dataTransfer.files.length > 0) {
+                    handleFileUpload(e.dataTransfer.files[0]);
+                }
+            });
+
+            // ---------------------------------------------------------------
+            // File Input Change
+            // ---------------------------------------------------------------
+            fileInput.addEventListener('change', () => {
+                if (fileInput.files.length > 0) {
+                    handleFileUpload(fileInput.files[0]);
+                }
+            });
+
+            // ---------------------------------------------------------------
+            // Upload Model
+            // ---------------------------------------------------------------
+            async function handleFileUpload(file) {
+                if (!file.name.toLowerCase().endsWith('.zip')) {
+                    showSnackbar('Please upload a .zip file.', 'error');
+                    return;
+                }
+
+                isUploading = true;
+                modelUploaded = false;
+                updatePredictBtn();
+
+                // Show uploading state
+                uploadContent.style.display = 'none';
+                uploadStatus.style.display = 'block';
+                uploadStatus.innerHTML = `
+                    <div class="uploading-spinner"></div>
+                    <div class="upload-filename" style="margin-top:12px">${file.name}</div>
+                    <div class="upload-text" style="margin-top:4px">Uploading & validating...</div>
+                `;
+                uploadZone.classList.remove('uploaded');
+
+                const formData = new FormData();
+                formData.append('file', file);
+
+                try {
+                    const response = await fetch(`${API_BASE}/upload-model`, {
+                        method: 'POST',
+                        body: formData,
+                    });
+
+                    const data = await response.json();
+
+                    if (!response.ok) {
+                        throw new Error(data.detail || 'Upload failed');
+                    }
+
+                    // Success
+                    modelUploaded = true;
+                    uploadedFilename = file.name;
+                    uploadZone.classList.add('uploaded');
+                    uploadIcon.textContent = 'check_circle';
+
+                    uploadStatus.innerHTML = `
+                        <span class="material-icons-round upload-icon" style="color:var(--success-500);font-size:36px">check_circle</span>
+                        <div class="upload-filename">${file.name}</div>
+                        <div class="upload-success">
+                            <span class="material-icons-round">verified</span>
+                            Model package uploaded successfully
+                        </div>
+                    `;
+
+                    showSnackbar('Model uploaded and validated successfully!', 'success');
+
+                } catch (err) {
+                    uploadZone.classList.remove('uploaded');
+                    uploadContent.style.display = 'block';
+                    uploadStatus.style.display = 'none';
+                    showSnackbar(err.message || 'Failed to upload model package.', 'error');
+                } finally {
+                    isUploading = false;
+                    updatePredictBtn();
+                }
+            }
+
+            // ---------------------------------------------------------------
+            // Predict
+            // ---------------------------------------------------------------
+            predictBtn.addEventListener('click', handlePredict);
+
+            async function handlePredict() {
+                const date = dateInput.value;
+
+                if (!date) {
+                    showSnackbar('Please select a date.', 'warning');
+                    return;
+                }
+
+                if (!modelUploaded) {
+                    showSnackbar('Please upload a model package first.', 'warning');
+                    return;
+                }
+
+                isPredicting = true;
+                updatePredictBtn();
+
+                // Update button to loading state
+                predictIcon.style.display = 'none';
+                predictText.innerHTML = '<span class="btn-spinner"></span>&nbsp;&nbsp;Predicting...';
+
+                try {
+                    const response = await fetch(`${API_BASE}/predict`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ date }),
+                    });
+
+                    const data = await response.json();
+
+                    if (!response.ok) {
+                        throw new Error(data.detail || 'Prediction failed');
+                    }
+
+                    renderResults(data.date, data.predictions);
+                    showSnackbar('Predictions generated successfully!', 'success');
+
+                } catch (err) {
+                    showSnackbar(err.message || 'Prediction failed. Please try again.', 'error');
+                } finally {
+                    isPredicting = false;
+                    predictIcon.style.display = '';
+                    predictText.textContent = 'Predict Rainfall';
+                    updatePredictBtn();
+                }
+            }
+
+            // ---------------------------------------------------------------
+            // Render Results
+            // ---------------------------------------------------------------
+            function renderResults(date, predictions) {
+                resultsSection.style.display = 'block';
+                resultsSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
+
+                // Format date display
+                const d = new Date(date + 'T00:00:00');
+                const options = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
+                resultsDate.textContent = d.toLocaleDateString('en-IN', options);
+
+                // Find max for bar scaling
+                const maxVal = Math.max(...predictions, 0.01);
+
+                // Build table rows with staggered animation
+                resultsBody.innerHTML = '';
+                predictions.forEach((val, i) => {
+                    const hour = String(i).padStart(2, '0') + ':00';
+                    const barWidth = Math.max(2, (val / maxVal) * 120);
+                    const isHigh = val > maxVal * 0.7;
+                    const isCurrentHour = (i === today.getHours() && date === today.toISOString().split('T')[0]);
+
+                    const tr = document.createElement('tr');
+                    tr.style.animation = `fadeIn 0.3s ease-out ${i * 30}ms both`;
+                    tr.innerHTML = `
+                        <td>
+                            <div class="time-cell">
+                                <span class="time-dot ${isCurrentHour ? 'active' : ''}"></span>
+                                ${hour}
+                            </div>
+                        </td>
+                        <td>
+                            <div class="rainfall-value">
+                                <span class="rainfall-bar ${isHigh ? 'high' : ''}" style="width:${barWidth}px"></span>
+                                ${val.toFixed(2)}
+                            </div>
+                        </td>
+                    `;
+                    resultsBody.appendChild(tr);
+                });
+
+                // Summary statistics
+                const total = predictions.reduce((a, b) => a + b, 0);
+                const avg = total / predictions.length;
+                const max = Math.max(...predictions);
+                const maxHour = predictions.indexOf(max);
+
+                resultsSummary.innerHTML = `
+                    <div class="summary-stat">
+                        <div class="summary-stat-label">Total Rainfall</div>
+                        <div class="summary-stat-value">${total.toFixed(2)} mm</div>
+                    </div>
+                    <div class="summary-stat">
+                        <div class="summary-stat-label">Average / Hour</div>
+                        <div class="summary-stat-value">${avg.toFixed(2)} mm</div>
+                    </div>
+                    <div class="summary-stat">
+                        <div class="summary-stat-label">Peak Rainfall</div>
+                        <div class="summary-stat-value">${max.toFixed(2)} mm</div>
+                    </div>
+                    <div class="summary-stat">
+                        <div class="summary-stat-label">Peak Hour</div>
+                        <div class="summary-stat-value">${String(maxHour).padStart(2, '0')}:00</div>
+                    </div>
+                `;
+            }
+
+        })();
+    </script>
+</body>
+</html>
